@@ -17,6 +17,21 @@ app.use(express.json())
 const uri =`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.jq2it7m.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+function veryfyJWT(req,res,next){
+  const authHeader=req.headers.authorization;
+  if(!authHeader){
+    return res.status(401).send({message:'unauthorized access'})
+  }
+  const token=authHeader.split(' ')[1]
+  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,function(err,decoded){
+    if(err){
+        return res.status(401).send({message:'unauthorized access'})
+    }
+    req.decoded=decoded;
+    next();
+  })
+} 
+
 async function run(){
    try{
     const serviceCollection=client.db('holyTourServices').collection('services')
@@ -53,7 +68,8 @@ async function run(){
         const cursor=await serviceCollection.findOne(query)
         res.send(cursor)
     })
-    app.get('/userreview',async(req,res)=>{
+    app.get('/userreview',veryfyJWT,async(req,res)=>{
+     
         let query={}
         if(req.query.email){
             query={
