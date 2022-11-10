@@ -132,5 +132,5 @@ app.get('/',(req,res)=>{
     res.send('server is ok')
 })
 app.listen(port,()=>{
-    console.log(`server is running ${port}`)
+    console.log(`server is running. ${port}`)
 })
