@@ -1,5 +1,6 @@
 const express =require('express')
 const cors = require('cors');
+const jwt=require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app =express()
@@ -14,14 +15,20 @@ app.use(express.json())
 
 
 const uri =`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.jq2it7m.mongodb.net/?retryWrites=true&w=majority`;
-
-
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 async function run(){
    try{
     const serviceCollection=client.db('holyTourServices').collection('services')
     const reviewCollection=client.db('holyTourServices').collection('review')
+    
+    app.post('/jwt',(req,res)=>{
+        const user=req.body;
+        const token=jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{expiresIn:'1h'})
+        res.send({token})
+        
+    })
+    
     app.get('/services',async (req,res)=>{
         const query={}
         const cursor=serviceCollection.find(query).limit(3)
@@ -35,11 +42,55 @@ async function run(){
         const services=await cursor.toArray()
         res.send(services)
     })
+    app.post('/addservice',async(req,res)=>{
+        const addService=req.body;
+        const cursor=await serviceCollection.insertOne(addService)
+        res.send(cursor)
+    })
     app.get('/cardDetails/:id',async (req,res)=>{
         const id=req.params.id
         const query={_id:ObjectId(id)}
         const cursor=await serviceCollection.findOne(query)
         res.send(cursor)
+    })
+    app.get('/userreview',async(req,res)=>{
+        let query={}
+        if(req.query.email){
+            query={
+                email:req.query.email
+            }
+        }
+     
+        const cursor=reviewCollection.find(query)
+        const review=await cursor.toArray()
+        res.send(review)
+    })
+    app.delete('/review/:id',async(req,res)=>{
+        const id=req.params.id;
+        const query={_id:ObjectId(id)}
+        const result=await reviewCollection.deleteOne(query)
+        res.send(result)
+    })
+
+    app.get('/update/:id',async(req,res)=>{
+        const id=req.params.id;
+        const query={_id:ObjectId(id)}
+        const cursor=await reviewCollection.findOne(query)
+        res.send(cursor)
+
+    })
+    app.put('/update/:id',async(req,res)=>{
+        const id=req.params.id;
+        const query={_id:ObjectId(id)}
+        const updateUser=req.body;
+        const option={upsert:true}
+        const updateMessage={
+            $set:{
+                message:updateUser.review
+            }
+        }
+        const result=await reviewCollection.updateOne(query,updateMessage,option)  
+        res.send(result)
     })
     app.get('/review/:id',async (req,res)=>{
         const id=req.params.id;
